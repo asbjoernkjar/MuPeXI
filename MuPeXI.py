@@ -6,6 +6,9 @@ Date: 2015-09-03
 By: Anne-Mette Bjerregaard
 MuPeXI.py extracts user defined peptides lengths around missense variant mutations, indels and frameshifts.
 Information from each mutation is annotated together with the mutant and normal peptides in the file output. 
+
+
+MODIFIED BY ASBJOERN KJAER TO WORK WITH NETMHCPAN4.1B
 """
 
 # Import modules 
@@ -92,13 +95,21 @@ def main(args):
 
     # run netMHCpan
     unique_mutant_peptide_count, peptide_file = write_peptide_file(peptide_info, tmp_dir, input_.webserver, input_.keep_temp, input_.prefix, input_.outdir)
-    netMHCpan_runtime, unique_alleles, netMHC_EL_file, netMHC_BA_file = run_netMHCpan(input_.HLA_alleles, paths.netMHC, peptide_file, tmp_dir, input_.webserver, input_.keep_temp, input_.prefix, input_.outdir, input_.netmhc_anal)
-    net_mhc_BA = build_netMHC(netMHC_BA_file, input_.webserver, 'YES') if not netMHC_BA_file == None else None
-    net_mhc_EL = build_netMHC(netMHC_EL_file, input_.webserver, 'NO')
+    netMHCpan_runtime, unique_alleles, netMHC_file = run_netMHCpan(input_.HLA_alleles, paths.netMHC, peptide_file, tmp_dir, input_.webserver, input_.keep_temp, input_.prefix, input_.outdir, input_.netmhc_anal)
+    if input_.netmhc_anal is None:
+        net_mhc_dic = build_netMHC(netMHC_file, input_.webserver, 'NO')
+        use_BA = False
+    else:
+        net_mhc_dic = build_netMHC(netMHC_file, input_.webserver, 'YES')
+        use_BA = True
+    #net_mhc_dic replaces net_mhc_BA net_mhc_EL --> since netmhcpan outputs both in same file anyways
+
+    #net_mhc_BA = build_netMHC(netMHC_file, input_.webserver, 'YES') if not netMHC_BA_file == None else None #####
+    #net_mhc_EL = build_netMHC(netMHC_file, input_.webserver, 'NO')
 
 
     # write files 
-    output_file = write_output_file(peptide_info, expression, net_mhc_BA, net_mhc_EL, unique_alleles, cancer_genes, tmp_dir, input_.webserver, input_.print_mismatch, allele_fractions, input_.expression_type, transcript_info, reference_peptides, proteome_reference, protein_positions, version)
+    output_file = write_output_file(peptide_info, expression, net_mhc_dic, use_BA, unique_alleles, cancer_genes, tmp_dir, input_.webserver, input_.print_mismatch, allele_fractions, input_.expression_type, transcript_info, reference_peptides, proteome_reference, protein_positions, version)
     log_file = write_log_file(sys.argv, peptide_length, sequence_count, reference_peptide_counters, vep_counters, peptide_counters, start_time_mupex, start_time_mupei, start_time, end_time_mupex, input_.HLA_alleles, netMHCpan_runtime, unique_mutant_peptide_count, unique_alleles, tmp_dir, input_.webserver, version)
 
 
@@ -206,8 +217,8 @@ def check_netMHC_path(netMHC_path):
     if 'netH2pan' in netMHC_path:
         print '\tMouse specific MHC binding predictor netH2pan used'
     elif 'netMHCpan' in netMHC_path:
-        if not '4.0' in netMHC_path:
-            usage(); sys.exit('ERROR:\tnetMHCpan version 4.0 not stated in path {}\n\tOnly this version is supported'.format(netMHC_path))
+        if not '4.1' in netMHC_path:
+            usage(); sys.exit('ERROR:\tnetMHCpan version 4.1 not stated in path {}\n\tOnly this version is supported'.format(netMHC_path))
     else:
         usage(); sys.exit('ERROR:\tnetMHCpan / netH2pan not stated in path {} \n\t\tCheck the correct path to the netXpan binding predictor is annotated in the config.ini'.format(netMHC_path))
 
@@ -1130,38 +1141,44 @@ def run_netMHCpan(HLA_alleles, netMHCpan_path, peptide_file, tmp_dir, webserver,
 
     netMHCpan_start = datetime.now()
 
-    print_ifnot_webserver('\tRunning NetMHCpan eluted ligand prediction', webserver)
-    netMHC_EL_file = NamedTemporaryFile(delete = False, dir = tmp_dir)
-    process_netMHC_EL = subprocess.Popen([netMHCpan_path, '-p', '-a', unique_alleles, '-f', peptide_file.name], stdout = netMHC_EL_file)
-    process_netMHC_EL.communicate() # now wait
-    netMHC_EL_file.close()
-    keep_temp_file(keep_tmp, 'txt', netMHC_EL_file.name, file_prefix, outdir, None, 'netMHCpan_EL')
+    print_ifnot_webserver('\tRunning NetMHCpan 4.1 ligand prediction', webserver)
+    netMHC_file = NamedTemporaryFile(delete = False, dir = tmp_dir)
+    # process_netMHC_EL = subprocess.Popen([netMHCpan_path, '-p', '-a', unique_alleles, '-f', peptide_file.name], stdout = netMHC_file)
+    # process_netMHC_EL.communicate() # now wait
+    # netMHC_file.close()
+    # keep_temp_file(keep_tmp, 'txt', netMHC_file.name, file_prefix, outdir, None, 'netMHCpan_EL')
 
     # running binding affinity prediction if user specified all analysis 
-    if not netmhc_anal == None:
-        netMHC_BA_file = NamedTemporaryFile(delete = False, dir = tmp_dir)
-        print_ifnot_webserver('\tRunning NetMHCpan binding affinity prediction', webserver)
-        process_netMHC = subprocess.Popen([netMHCpan_path, '-p', '-a', unique_alleles, '-BA', '-f', peptide_file.name], stdout = netMHC_BA_file)
+    if not netmhc_anal == None: #with BA
+        
+        
+        process_netMHC = subprocess.Popen([netMHCpan_path, '-p', '-a', unique_alleles, '-BA', '-f', peptide_file.name], stdout = netMHC_file)
         process_netMHC.communicate() # now wait
-        netMHC_BA_file.close()
-        keep_temp_file(keep_tmp, 'txt', netMHC_BA_file.name, file_prefix, outdir, None, 'netMHCpan_BA')
-    else:
-        netMHC_BA_file = None
+    else: #without BA
+        process_netMHC_EL = subprocess.Popen([netMHCpan_path, '-p', '-a', unique_alleles, '-f', peptide_file.name], stdout = netMHC_file)
+        process_netMHC_EL.communicate() # now wait
+
+
+    netMHC_file.close()
+    keep_temp_file(keep_tmp, 'txt', netMHC_file.name, file_prefix, outdir, None, 'netMHCpan_out')
 
     netMHCpan_runtime = datetime.now() - netMHCpan_start
-    return netMHCpan_runtime, unique_alleles, netMHC_EL_file, netMHC_BA_file
 
+    return netMHCpan_runtime, unique_alleles, netMHC_file
 
 
 def build_netMHC(netMHC_file, webserver, affinity):
-    netmhc_anal = 'binding affinity prediction' if affinity == 'YES' else 'eluted ligand prediction'
-    print_ifnot_webserver('\tCreating NetMHCpan {} file dictionary'.format(netmhc_anal), webserver)
+    print_ifnot_webserver('\tCreating NetMHCpan file dictionary', webserver)
+    
+    #this new version extracts all information from the single file
     net_mhc = defaultdict(dict) # empty dictionary
-    NetMHCInfo = namedtuple('NetMHCInfo', ['affinity', 'rank', 'score'])
+    NetMHCInfo = namedtuple('NetMHCInfo', ['affinity', 'rank', 'score', 'rank_BA', 'score_BA'])
 
     # Account for different column output between netMHCpan output when running affinity predictions or not 
-    af = 12 if affinity == 'YES' else None
-    r = 13 if affinity == 'YES' else 12 
+    saf = 13 if affinity == 'YES' else None
+    af = 15 if affinity == 'YES' else None
+    raf = 14 if affinity == 'YES' else None
+    r = 12 # if affinity == 'YES' else 12 
 
     # Build dictionary 
     if not netMHC_file == None:
@@ -1175,10 +1192,12 @@ def build_netMHC(netMHC_file, webserver, affinity):
                         HLA_allele = line[1].replace('*','')
                         peptide = line[2]
                         affinity = float(line[af]) if not af == None else None
+                        rank_BA = float(line[raf]) if not raf == None else None
+                        score_BA = float(line[saf]) if not saf == None else None
                         rank = float(line[r])
                         score = float(line[11]) 
                         # fill tuple
-                        netmhc_info = NetMHCInfo(affinity, rank, score)
+                        netmhc_info = NetMHCInfo(affinity, rank, score, rank_BA, score_BA)
                         # fill dictionary
                         net_mhc[HLA_allele][peptide] = netmhc_info
     else:
@@ -1188,13 +1207,13 @@ def build_netMHC(netMHC_file, webserver, affinity):
 
 
 
-def write_output_file(peptide_info, expression, net_mhc_BA, net_mhc_EL, unique_alleles, cancer_genes, tmp_dir, webserver, print_mismatch, allele_fractions, expression_file_type, transcript_info, reference_peptides, proteome_reference, protein_positions, version):
+def write_output_file(peptide_info, expression, net_mhc_dic, use_BA , unique_alleles, cancer_genes, tmp_dir, webserver, print_mismatch, allele_fractions, expression_file_type, transcript_info, reference_peptides, proteome_reference, protein_positions, version):
     print_ifnot_webserver('\tWriting output file', webserver)
     printed_ids = set()
     row = 0
 
     # Create data frame 
-    if net_mhc_BA == None:
+    if not use_BA:
         df = pandas.DataFrame(columns = (
             'HLA_allele',
             'Norm_peptide',
@@ -1258,14 +1277,14 @@ def write_output_file(peptide_info, expression, net_mhc_BA, net_mhc_EL, unique_a
         for normal_peptide in peptide_info[mutant_petide]:
             for hla in unique_alleles.split(','):
                 # Checking concordance between MHC files  and intermediate peptide_info file 
-                assert hla in net_mhc_EL, 'Allele "{}" not stated in NetMHCpan output'.format(hla)
-                assert mutant_petide in net_mhc_EL[hla], 'Mutant peptide "{}" not found in NetMHCpan output'.format(mutant_petide)
-                assert normal_peptide in net_mhc_EL[hla], 'Normal peptide "{}" not found in NetMHCpan output'.format(normal_peptide)
+                assert hla in net_mhc_dic, 'Allele "{}" not stated in NetMHCpan output'.format(hla)
+                assert mutant_petide in net_mhc_dic[hla], 'Mutant peptide "{}" not found in NetMHCpan output'.format(mutant_petide)
+                assert normal_peptide in net_mhc_dic[hla], 'Normal peptide "{}" not found in NetMHCpan output'.format(normal_peptide)
                 # save information tuples 
                 mutation_info = peptide_info[mutant_petide][normal_peptide][0]
                 peptide_sequence_info = peptide_info[mutant_petide][normal_peptide][1]
-                mutant_netmhc_info = net_mhc_EL[hla][mutant_petide]
-                normal_netmhc_info = net_mhc_EL[hla][normal_peptide]
+                mutant_netmhc_info = net_mhc_dic[hla][mutant_petide]
+                normal_netmhc_info = net_mhc_dic[hla][normal_peptide]
                 pep_match_info = peptide_info[mutant_petide][normal_peptide][3]
                 peptide_position = peptide_info[mutant_petide][normal_peptide][2]
                 mutation_id_vep = '{}_{}_{}/{}'.format(mutation_info.chr, mutation_info.pos, mutation_info.aa_normal, mutation_info.aa_mut)
@@ -1293,7 +1312,7 @@ def write_output_file(peptide_info, expression, net_mhc_BA, net_mhc_EL, unique_a
 
 
                 # Add row to data frame 
-                if net_mhc_BA == None:
+                if not use_BA:      #case where we only calculated BA
                     df.loc[row] = [
                     hla, 
                     print_normal_peptide, 
@@ -1320,11 +1339,11 @@ def write_output_file(peptide_info, expression, net_mhc_BA, net_mhc_EL, unique_a
                     priority_score]
                 else:
                     # Checking concordance between MHC files  and intermediate peptide_info file 
-                    assert hla in net_mhc_BA, 'Allele "{}" not stated in NetMHCpan output'.format(hla)
-                    assert mutant_petide in net_mhc_BA[hla], 'Mutant peptide "{}" not found in NetMHCpan output'.format(mutant_petide)
-                    assert normal_peptide in net_mhc_BA[hla], 'Normal peptide "{}" not found in NetMHCpan output'.format(normal_peptide)
-                    mutant_netmhc_BA_info = net_mhc_BA[hla][mutant_petide]
-                    normal_netmhc_BA_info = net_mhc_BA[hla][normal_peptide]
+                    assert hla in net_mhc_dic, 'Allele "{}" not stated in NetMHCpan output'.format(hla)
+                    assert mutant_petide in net_mhc_dic[hla], 'Mutant peptide "{}" not found in NetMHCpan output'.format(mutant_petide)
+                    assert normal_peptide in net_mhc_dic[hla], 'Normal peptide "{}" not found in NetMHCpan output'.format(normal_peptide)
+                    mutant_netmhc_BA_info = net_mhc_dic[hla][mutant_petide]
+                    normal_netmhc_BA_info = net_mhc_dic[hla][normal_peptide]
 
                     df.loc[row] = [
                     hla, 
@@ -1332,14 +1351,14 @@ def write_output_file(peptide_info, expression, net_mhc_BA, net_mhc_EL, unique_a
                     normal_netmhc_info.rank,
                     normal_netmhc_info.score,
                     normal_netmhc_BA_info.affinity,
-                    normal_netmhc_BA_info.rank,
-                    normal_netmhc_BA_info.score,
+                    normal_netmhc_BA_info.rank_BA,
+                    normal_netmhc_BA_info.score_BA,
                     mutant_petide, 
                     mutant_netmhc_info.rank,
                     mutant_netmhc_info.score,
                     mutant_netmhc_BA_info.affinity,
-                    mutant_netmhc_BA_info.rank,
-                    mutant_netmhc_BA_info.score,
+                    mutant_netmhc_BA_info.rank_BA,
+                    mutant_netmhc_BA_info.score_BA,
                     mutation_info.gene_id, 
                     ','.join(transcript_ids), 
                     '{}/{}'.format(mutation_info.aa_normal, mutation_info.aa_mut), 
@@ -1543,7 +1562,7 @@ def write_log_file(argv, peptide_length, sequence_count, reference_peptide_count
           Detecting HLA alleles:                     Detected the following {num_of_HLAalleles} HLA alleles:
                                                         {HLAalleles}
                                                         of which {num_of_unique_alleles} were unique
-          Running NetMHCpan 4.0:                     Analyzed {num_of_unique_alleles} HLA allele(s)
+          Running NetMHCpan 4.1:                     Analyzed {num_of_unique_alleles} HLA allele(s)
                                                      NetMHCpan runtime: {netMHCpan_runtime}
           MuPeI Runtime:                             {time_mupei}
           TOTAL Runtime:                             {time}
@@ -1693,7 +1712,7 @@ def usage():
         -g, --liftover          Perform liftover HG19 to GRCh38.
                                 Requires local picard installation with paths
                                 stated in the config file
-        -n, --netmhc-full-anal  Run NetMHCpan 4.0 with the full analysis including 
+        -n, --netmhc-full-anal  Run NetMHCpan 4.1 with the full analysis including 
                                 both eluted ligand (EL) and binding affinity (BA) 
                                 prediction output (priority score calculated from 
                                 EL rank score)
