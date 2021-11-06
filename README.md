@@ -2,9 +2,9 @@
 #### NOTE. This is MuPeXI updated for NetMHCpan4.1b. For use in a neoantigen calling pipeline
 #### all rights/credit belong to the original authors
 
-Should be run like the original mupexi, but with NetMHCpan version 4.1b instead of version 4.0
-https://services.healthtech.dtu.dk/service.php?NetMHCpan-4.1
-See original github for instructions
+Should be run like the original mupexi, but with NetMHCpan version 4.1b instead of version 4.0  
+https://services.healthtech.dtu.dk/service.php?NetMHCpan-4.1  
+See original github for instructions  
 https://github.com/ambj/MuPeXI
 
 
