@@ -1794,9 +1794,9 @@ def read_options(argv):
     liftover = 'Yes' if '-g' in opts.keys() else None
     num_mismatches = opts['-m'] if '-m' in opts.keys() else 4
     assembly = opts['-A'] if '-A' in opts.keys() else None
-    fork = opts['-F'] if '-F' in opts.keys() else 2
-    if int(fork) <= 1:
-        usage(); sys.exit('VEP fork number must be greater than 1')
+    fork = opts['-F'] if '-F' in opts.keys() else 1 #VEP works fine with only one fork. This allows running mupexi on a single core
+    if int(fork) < 1:
+        usage(); sys.exit('VEP fork number must be greater than 0')
     species = opts['-s'] if '-s' in opts.keys() else 'human'
     netmhc_anal = 'yes' if '-n' in opts.keys() else None
 
