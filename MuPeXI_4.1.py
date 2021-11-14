@@ -767,18 +767,21 @@ def peptide_extraction(peptide_lengths, vep_info, proteome_reference, genome_ref
 def mutation_sequence_creation(mutation_info, proteome_reference, genome_reference, peptide_length):
     # Create empty named tuple
     PeptideSequenceInfo = namedtuple('peptide_sequence_info', ['chop_normal_sequence', 'mutation_sequence', 'normal_sequence','mutation_position', 'consequence'])
-
-    if mutation_info.mutation_consequence == 'missense_variant' :
-        peptide_sequence_info = missense_variant_peptide(proteome_reference, mutation_info, peptide_length, PeptideSequenceInfo)
-    elif mutation_info.mutation_consequence == 'inframe_insertion' :
-        peptide_sequence_info = insertion_peptide(proteome_reference, mutation_info, peptide_length, PeptideSequenceInfo)
-    elif mutation_info.mutation_consequence == 'inframe_deletion' :
-        peptide_sequence_info = deletion_peptide(proteome_reference, mutation_info, peptide_length, PeptideSequenceInfo)
-    elif mutation_info.mutation_consequence == 'frameshift_variant' :
-        peptide_sequence_info = frame_shift_peptide(genome_reference, proteome_reference, mutation_info, peptide_length, PeptideSequenceInfo)
-    else :
+    try:
+        if mutation_info.mutation_consequence == 'missense_variant' :
+            peptide_sequence_info = missense_variant_peptide(proteome_reference, mutation_info, peptide_length, PeptideSequenceInfo)
+        elif mutation_info.mutation_consequence == 'inframe_insertion' :
+            peptide_sequence_info = insertion_peptide(proteome_reference, mutation_info, peptide_length, PeptideSequenceInfo)
+        elif mutation_info.mutation_consequence == 'inframe_deletion' :
+            peptide_sequence_info = deletion_peptide(proteome_reference, mutation_info, peptide_length, PeptideSequenceInfo)
+        elif mutation_info.mutation_consequence == 'frameshift_variant' :
+            peptide_sequence_info = frame_shift_peptide(genome_reference, proteome_reference, mutation_info, peptide_length, PeptideSequenceInfo)
+        else :
+            peptide_sequence_info = None
+    except AssertionError as a:
+        print '\tAssertion failed for variant: chr: {chr} pos: {pos} REMOVED FROM ANALYSIS'.format(chr = mutation_info.chr, pos = mutation_info.pos)
+        print a
         peptide_sequence_info = None
-
     return peptide_sequence_info
 
 
