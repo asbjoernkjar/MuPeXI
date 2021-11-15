@@ -608,8 +608,13 @@ def build_vep_info(vep_file, webserver):
             prot_pos = line[9].strip()
             cdna_pos = line[7].strip()
             symbol = re.search(r'SYMBOL=(\d*\w*\d*\w*\d*\w*)', line[13]).group(1).strip() if not re.search(r'SYMBOL', line[13]) == None else '-'
-            aa_normal, aa_mutation = line[10].split('/')
-            codon_normal, codon_mut = line[11].split('/')
+            try:
+                aa_normal, aa_mutation = line[10].split('/')
+                codon_normal, codon_mut = line[11].split('/')
+            except ValueError as a:
+                print '\tCannot split variant aa: {aa} codon: {cod} REMOVED FROM ANALYSIS'.format(aa = line[10], cod = line[11])
+                print a
+                continue 
             if '-' in line[9] :
                 prot_pos, prot_pos_to = line[9].split('-')
             else :
