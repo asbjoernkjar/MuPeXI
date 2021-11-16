@@ -612,9 +612,10 @@ def build_vep_info(vep_file, webserver):
                 aa_normal, aa_mutation = line[10].split('/')
                 codon_normal, codon_mut = line[11].split('/')
                 if codon_mut is None or aa_mutation is None:
+                    print '\tSecond position is None for mutation aa: {aa} codon: {cod}, chr:{chr} pos:{pos}, REMOVED FROM ANALYSIS'.format(aa = line[10], cod = line[11], pos = genome_pos , chr = chr_)
                     continue 
             except ValueError as a:
-                print '\tCannot split variant aa: {aa} codon: {cod} REMOVED FROM ANALYSIS'.format(aa = line[10], cod = line[11])
+                print '\tCannot split variant aa: {aa} codon: {cod}, chr:{chr} pos:{pos}, REMOVED FROM ANALYSIS'.format(aa = line[10], cod = line[11], pos = genome_pos , chr = chr_)
                 print a
                 continue 
             if '-' in line[9] :
