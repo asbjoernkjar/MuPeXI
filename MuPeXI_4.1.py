@@ -611,6 +611,8 @@ def build_vep_info(vep_file, webserver):
             try:
                 aa_normal, aa_mutation = line[10].split('/')
                 codon_normal, codon_mut = line[11].split('/')
+                if codon_mut is None or aa_mutation is None:
+                    continue 
             except ValueError as a:
                 print '\tCannot split variant aa: {aa} codon: {cod} REMOVED FROM ANALYSIS'.format(aa = line[10], cod = line[11])
                 print a
