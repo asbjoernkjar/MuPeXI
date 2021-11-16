@@ -611,9 +611,6 @@ def build_vep_info(vep_file, webserver):
             try:
                 aa_normal, aa_mutation = line[10].split('/')
                 codon_normal, codon_mut = line[11].split('/')
-                if codon_mut is None or aa_mutation is None:
-                    print '\tSecond position is None for mutation aa: {aa} codon: {cod}, chr:{chr} pos:{pos}, REMOVED FROM ANALYSIS'.format(aa = line[10], cod = line[11], pos = genome_pos , chr = chr_)
-                    continue 
             except ValueError as a:
                 print '\tCannot split variant aa: {aa} codon: {cod}, chr:{chr} pos:{pos}, REMOVED FROM ANALYSIS'.format(aa = line[10], cod = line[11], pos = genome_pos , chr = chr_)
                 print a
@@ -788,6 +785,10 @@ def mutation_sequence_creation(mutation_info, proteome_reference, genome_referen
             peptide_sequence_info = None
     except AssertionError as a:
         print '\tAssertion failed for variant: chr: {chr} pos: {pos} REMOVED FROM ANALYSIS'.format(chr = mutation_info.chr, pos = mutation_info.pos)
+        print a
+        peptide_sequence_info = None
+    except AttributeError as a:
+        print '\tCant create ne codon for codon: {codon} chr: {chr} pos: {pos} REMOVED FROM ANALYSIS'.format(codon = mutation_info.codon_mut ,chr = mutation_info.chr, pos = mutation_info.pos)
         print a
         peptide_sequence_info = None
     return peptide_sequence_info
